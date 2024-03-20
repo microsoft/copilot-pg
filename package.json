@@ -1,0 +1,60 @@
+{
+  "name": "readmebuilder",
+  "displayName": "ReadmeBuilder",
+  "description": "Creates a README file using Copilot, based on your code and comments.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.86.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "activationEvents": [],
+  "enabledApiProposals": [
+    "chatParticipant",
+    "chatVariableResolver",
+    "languageModels",
+    "workspaceTrust"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "chatParticipants": [
+      {
+        "name": "dba",
+        "description": "I'm busy, but I have a few minutes. Make it fast, please?",
+        "commands": [
+          {
+            "name": "table",
+            "description": "Create a database table based on a prompt and create test data. I'll do my best, but charity isn't my strong suit."
+          },
+          {
+            "name": "query",
+            "description": "Happy to substitue for Google... tell me what you're looking for"
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "18.x",
+    "@types/vscode": "^1.86.0",
+    "@vscode/test-cli": "^0.0.6",
+    "@vscode/test-electron": "^2.3.9",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "octokit": "^3.1.2",
+    "promised-sqlite3": "^2.1.0",
+    "sqlite3": "^5.1.7"
+  }
+}
