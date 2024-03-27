@@ -1,7 +1,7 @@
 {
-  "name": "readmebuilder",
-  "displayName": "ReadmeBuilder",
-  "description": "Creates a README file using Copilot, based on your code and comments.",
+  "name": "pgfriendo",
+  "displayName": "PG Friendo",
+  "description": "Creates queries and other fun things with your default database.",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.86.0"
@@ -23,20 +23,27 @@
   "contributes": {
     "chatParticipants": [
       {
-        "name": "dba",
-        "description": "I'm busy, but I have a few minutes. Make it fast, please?",
+        "id": "dba.pg",
+        "name": "pg",
+        "description": "Let's have some fun with Postgres",
         "commands": [
           {
-            "name": "table",
-            "description": "Create a database table based on a prompt and create test data. I'll do my best, but charity isn't my strong suit."
+            "name": "conn",
+            "description": "What database should I connect to? Enter a postgres:// string"
           },
           {
             "name": "query",
-            "description": "Happy to substitue for Google... tell me what you're looking for"
+            "description": "Let's query your data"
           }
         ]
       }
-    ]
+    ],
+    "commands": [
+      {
+          "command": "pg.csv",
+          "title": "Print current results to CSV"
+      }
+  ]
   },
   "scripts": {
     "lint": "eslint .",
@@ -53,7 +60,11 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@mrodrig/json-2-csv-cli": "^5.0.0",
+    "ascii-table3": "^0.9.0",
+    "dotenv": "^16.4.5",
     "octokit": "^3.1.2",
+    "pg-promise": "^11.5.5",
     "promised-sqlite3": "^2.1.0",
     "sqlite3": "^5.1.7"
   }
