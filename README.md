@@ -66,3 +66,9 @@ The extension will pull the SQL from the response, and run it for you against yo
 ```
 
 At that point, you'll be able to save the results as a CSV file, which will save it into a `/csvs` directory in your project.
+
+## TODO
+
+ - Alter statement check
+ - Variables for connection
+ - Build May 8

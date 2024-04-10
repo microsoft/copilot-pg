@@ -7,37 +7,25 @@ const fs = require("fs");
 const path = require("path");
 const thisDir = vscode.workspace.workspaceFolders[0].uri.path;
 const envFile = path.resolve(thisDir, ".env");
-const pgp = require("pg-promise")({});
+const DB = require("./db");
 const util = require("./utils");
+
 let currentResult = null;
 let currentPrompt = null;
+let sqlCommands = [];
+let conn = "";
+let db;
+let chatStream;
 
-//this writes a file to the *extension* temp directory
-//so we can display it, but not intrude on the user's workspace
-const writeToTemp = async function(fileName, val){
-  //pop this in the extension temp
-  const filePath = path.resolve(__dirname,fileName);
-  fs.writeFileSync(filePath, val, "utf-8");
-  var openPath = vscode.Uri.file(filePath);
-  const openDoc = await vscode.workspace.openTextDocument(openPath);
-  await vscode.window.showTextDocument(openDoc);
-}
 
-//Some duplication here, I'll refactor as I can. This writes a file to the workspace
-//and optionally shows it in the editor
-const writeToWorkspace = async function(dir, fileName, val, showDoc = true){
-  //pop this in the extension temp
-  const outDir = path.resolve(thisDir, dir);
-  if(!fs.existsSync(outDir)){
-    fs.mkdirSync(outDir);
+const showResults = async function(results){
+  if(results && results.length > 0){
+    await util.writeToTemp("results.txt",results)
+  }else{
+    vscode.window.showInformationMessage(`✨ Query executed successfully.`, "OK");
   }
-  const filePath = path.resolve(outDir,fileName);
-  fs.writeFileSync(filePath, val, "utf-8");
-  if(showDoc){
-    var openPath = vscode.Uri.file(filePath);
-    const openDoc = await vscode.workspace.openTextDocument(openPath);
-    await vscode.window.showTextDocument(openDoc);
-  }
+  
+  //chatStream.markdown("\n\n The results are to the right... hope this helps");
 }
 
 function activate(context) {
@@ -45,32 +33,29 @@ function activate(context) {
   const handler = async function (request, ctx, stream, token) {
     //holding on to the prompt so we can use it with the followup command
     currentPrompt = request.prompt;
+    chatStream = stream;
 
-    if (request.command === "query") {
+    if(request.command === "conn"){
+      conn = request.prompt;
+      stream.markdown("Connection set. Let's goooo!")
+    }else if (request.command === "query") {
       //TODO: this is how we know what DB to connect to. We should have a way to make this
       //more customizable either through an alternate .env file, or by manual setting
-      if (!fs.existsSync(envFile)) {
-        stream.markdown("Please be sure there's a .env file in the root of the project with a DATABASE_URL setting");
-        return;
-      }
-      //Pull out the settings directly using dotenv
-      const env = require("dotenv").config({ path: `${envFile}` });
-      const conn = env.parsed.DATABASE_URL;
+
+      //Still might be null or empty
       if (!conn) {
-        stream.markdown("Please be sure there's a DATABASE_URL='' setting in your .env");
+        if (fs.existsSync(envFile)) {
+          const env = require("dotenv").config({ path: `${envFile}` });
+          conn = env.parsed.DATABASE_URL;
+        }
+        if(!conn){
+          stream.markdown("There's no .env file with a DATABASE_URL. Please set the connection using the /conn command");        
+          return;
+        }
       }
-      const db = pgp(conn);
       
-      //This query interrogates our DB for tables and their columns. It's ANSI SQL so should work
-      //with any provider
-      let sql = `SELECT table_name, column_name, data_type, character_maximum_length, column_default, is_nullable
-      FROM information_schema.columns
-      where table_schema = 'public';`;
-
-      const res = await db.manyOrNone(sql);
-
-      //returns a bunch of 'create table' statements so we can send to Copilot
-      const schema = util.jsonToDDL(res);
+      db = new DB(conn);
+      const schema = await db.buildSchema();
 
       stream.progress("Right then, let's see what we can find...");
       const prompt = `Create a select query for a PostgreSQL database for ${request.prompt}. The reference schema for this database is ${schema}.`;
@@ -96,39 +81,37 @@ function activate(context) {
       //use some regex to squeeze out the code
       const codePattern = /(?<=```sql).+?(?=```)/gs;
       const matches = md.match(codePattern);
+
       if (matches && matches.length > 0) {
-        //we should only have one SQL reply, so take the first
-        //this works 90%+
-        const sql = matches[0];
         
-        //use this to execute the query. If it errors, we'll see the message
-        //from Copilot
-        const rows = await db.manyOrNone(sql);
-        await db.$pool.end();
+        //cache this
+        sqlCommands = matches;
 
-        if(rows && rows.length > 0){
-          //cache results for CSV output
-          currentResult = rows;
-          
-          //turn the JSON into an ASCII table and then pop it in the editor window
-          const ascii = util.jsonToAscii(request.prompt, rows);
-          await writeToTemp("results.txt",ascii)
-
-          stream.markdown("\n\n The results are to the right... hope this helps");
-
-          //the followup to write a CSV
+        //right now this just looks for the presence of a select query
+        const hasChanges = db.hasChanges(sqlCommands);
+        if(hasChanges){
+          stream.markdown("These SQL commands contain schema or data changes. Proceed?")
           stream.button({
-            command: "pg.csv",
-            title: vscode.l10n.t('Print the results as CSV')
+            command: "pg.run",
+            title: vscode.l10n.t('Yes, Execute!')
           });
           
         }else{
-          stream.markdown("No results for this query");
+          const {results, ascii} = await db.runCommands(matches);
+          await showResults(ascii);
+          currentResult = results;
+            //the followup to write a CSV
+          chatStream.button({
+            command: "pg.csv",
+            title: vscode.l10n.t('Print the results as CSV')
+          });
         }
+        await db.close();
 
-      } else {
-        stream.markdown("\n\n No query to run... taking a nap");
+        
       }
+    }else{
+      stream.markdown(request.prompt)
     }
   };
   const dba = vscode.chat.createChatParticipant("dba.pg", handler);
@@ -140,10 +123,35 @@ function activate(context) {
       let converter = require('json-2-csv');
       const csv = await converter.json2csv(currentResult);
       const fileName = util.sluggify(currentPrompt)
-      writeToWorkspace("csvs",fileName + ".csv", csv, false);
-      const res = vscode.window.showInformationMessage(`✨ The results above have been written to csvs/${fileName} in your local project.`, "OK")
-      if(res === "OK"){
-        
+      util.writeToWorkspace("csvs",fileName + ".csv", csv, false);
+      vscode.window.showInformationMessage(`✨ The results above have been written to csvs/${fileName} in your local project.`, "OK")
+    }),
+    vscode.commands.registerTextEditorCommand("pg.run", async (editor) => {
+      //the json is cached already, just convert it and save
+      try{
+        const {results, ascii} = await db.runCommands(sqlCommands);
+        currentResult = results;
+        showResults(ascii)
+      }catch(err){
+        vscode.showInformationMessage("🤬 There was an error:", err.message)
+      }
+    }),
+    vscode.chat.registerChatVariableResolver('pg_results', "The results of the last query", (name, context, token) => {
+      if(!currentResult){
+        currentResult="--"
+      }
+      return {
+        level: vscode.ChatVariableLevel.Full,
+        value: currentResult
+      }
+    }),
+    vscode.chat.registerChatVariableResolver('pg_conn', "The current db connection", (name, context, token) => {
+      if(!conn){
+        conn="--"
+      }
+      return {
+        level: vscode.ChatVariableLevel.Medium,
+        value: conn
       }
     })
   );
