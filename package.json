@@ -26,16 +26,7 @@
         "id": "dba.pg",
         "name": "pg",
         "description": "Let's have some fun with Postgres",
-        "commands": [
-          {
-            "name": "conn",
-            "description": "What database should I connect to? Enter a postgres:// string"
-          },
-          {
-            "name": "query",
-            "description": "Let's query your data"
-          }
-        ]
+        "isSticky": true
       }
     ],
     "commands": [

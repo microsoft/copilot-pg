@@ -30,41 +30,71 @@ const showResults = async function(results){
 
 function activate(context) {
 
+  vscode.chat.registerChatVariableResolver('conn', "The current db connection", {
+    resolve: async (name, context, token) => {
+      if (name === 'conn') {
+  
+        // prompt the user for a url using the vscode.window.showInputBox API
+        const result = await vscode.window.showInputBox({
+            prompt: 'Enter the URL to the PostgreSQL database you want to work with',
+            value: "postgres://localhost/??"
+        }) || "";
+  
+        if (result.trim() !== '') {
+          conn = result;
+        }
+      }
+    }
+  });
+  const getConn = async function(){
+    if(conn) return conn;
+    //a few choices here - we can default to the local .ENV
+    if (fs.existsSync(envFile)) {
+      const env = require("dotenv").config({ path: `${envFile}` });
+      conn = env.parsed.DATABASE_URL;
+    }
+    if(!conn){
+      const result = await vscode.window.showInputBox({
+          prompt: 'Enter the URL to the PostgreSQL database you want to work with. You can change this at any time using #conn.',
+          value: "postgres://localhost/postgres"
+      }) || "";
+      if (result.trim() !== '') {
+        conn = result;
+      }
+    }
+    //if we don't have a connection, we can ask for one
+
+  }
   const handler = async function (request, ctx, stream, token) {
     //holding on to the prompt so we can use it with the followup command
     currentPrompt = request.prompt;
     chatStream = stream;
-
-    if(request.command === "conn"){
-      conn = request.prompt;
-      stream.markdown("Connection set. Let's goooo!")
-    }else if (request.command === "query") {
-      //TODO: this is how we know what DB to connect to. We should have a way to make this
-      //more customizable either through an alternate .env file, or by manual setting
-
-      //Still might be null or empty
-      if (!conn) {
-        if (fs.existsSync(envFile)) {
-          const env = require("dotenv").config({ path: `${envFile}` });
-          conn = env.parsed.DATABASE_URL;
-        }
-        if(!conn){
-          stream.markdown("There's no .env file with a DATABASE_URL. Please set the connection using the /conn command");        
-          return;
-        }
-      }
-      
-      db = new DB(conn);
-      const schema = await db.buildSchema();
-
+    await getConn();
+    stream.markdown("Using connection `" + conn + "`. You can change this by adding #conn to the end of your prompt.\n");
+    db = new DB(conn);
+    let schema;
+    let haveError = false;
+    try{
+      schema = await db.buildSchema();
+    }catch(err){
+      haveError = true;
+    }
+    if(!request.prompt || request.prompt === ""){
+      stream.markdown("Happy to help - what type of query do you want to run?")
+      haveError = true;
+    }
+    if(haveError){
+      stream.markdown("\n\n🤔 Looks like that database doesn't exist or has no tables. Please check the connection again. You can set it by using #conn").
+      return
+    }else{
       stream.progress("Right then, let's see what we can find...");
       const prompt = `Create a select query for a PostgreSQL database for ${request.prompt}. The reference schema for this database is ${schema}.`;
-
+  
       const messages = [
         new vscode.LanguageModelChatSystemMessage("You are a friendly database administrator and you have been asked to write a SQL query for a PostgreSQL database."),
         new vscode.LanguageModelChatUserMessage(prompt),
       ];
-
+  
       const chatResponse = await vscode.lm.sendChatRequest(
         LANGUAGE_MODEL_ID,
         messages,
@@ -81,12 +111,12 @@ function activate(context) {
       //use some regex to squeeze out the code
       const codePattern = /(?<=```sql).+?(?=```)/gs;
       const matches = md.match(codePattern);
-
+  
       if (matches && matches.length > 0) {
         
         //cache this
         sqlCommands = matches;
-
+  
         //right now this just looks for the presence of a select query
         const hasChanges = db.hasChanges(sqlCommands);
         if(hasChanges){
@@ -107,33 +137,25 @@ function activate(context) {
           });
         }
         await db.close();
-
-        
       }
-    }else{
-      stream.markdown(request.prompt)
     }
   };
+
+
   const dba = vscode.chat.createChatParticipant("dba.pg", handler);
+  
+  //might be interesting at some point
+  // dba.followupProvider = {
+  //   provideFollowups(result, context, token){
+  //       return [{
+  //           prompt: 'Explain this query?',
+  //           label: vscode.l10n.t('Explain this query?'),
+  //           command: 'explain'
+  //       }];
+  //   }
+  // };
+
   dba.isSticky = true;
-  vscode.chat.registerChatVariableResolver('pg_results', "The results of the last query", (name, context, token) => {
-    if(!currentResult){
-      currentResult="--"
-    }
-    return [{
-      level: vscode.ChatVariableLevel.Full,
-      value: currentResult
-    }]
-  }),
-  vscode.chat.registerChatVariableResolver('pg_conn', "The current db connection", (name, context, token) => {
-    if(!conn){
-      conn="--"
-    }
-    return [{
-      level: vscode.ChatVariableLevel.Medium,
-      value: conn
-    }]
-  })
   
   context.subscriptions.push(
     dba,
