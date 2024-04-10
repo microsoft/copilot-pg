@@ -116,6 +116,25 @@ function activate(context) {
   };
   const dba = vscode.chat.createChatParticipant("dba.pg", handler);
   dba.isSticky = true;
+  vscode.chat.registerChatVariableResolver('pg_results', "The results of the last query", (name, context, token) => {
+    if(!currentResult){
+      currentResult="--"
+    }
+    return [{
+      level: vscode.ChatVariableLevel.Full,
+      value: currentResult
+    }]
+  }),
+  vscode.chat.registerChatVariableResolver('pg_conn', "The current db connection", (name, context, token) => {
+    if(!conn){
+      conn="--"
+    }
+    return [{
+      level: vscode.ChatVariableLevel.Medium,
+      value: conn
+    }]
+  })
+  
   context.subscriptions.push(
     dba,
     vscode.commands.registerTextEditorCommand("pg.csv", async (editor) => {
@@ -134,24 +153,6 @@ function activate(context) {
         showResults(ascii)
       }catch(err){
         vscode.showInformationMessage("🤬 There was an error:", err.message)
-      }
-    }),
-    vscode.chat.registerChatVariableResolver('pg_results', "The results of the last query", (name, context, token) => {
-      if(!currentResult){
-        currentResult="--"
-      }
-      return {
-        level: vscode.ChatVariableLevel.Full,
-        value: currentResult
-      }
-    }),
-    vscode.chat.registerChatVariableResolver('pg_conn', "The current db connection", (name, context, token) => {
-      if(!conn){
-        conn="--"
-      }
-      return {
-        level: vscode.ChatVariableLevel.Medium,
-        value: conn
       }
     })
   );
