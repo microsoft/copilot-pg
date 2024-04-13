@@ -9,22 +9,24 @@ let cmd;
 let chatStream;
 
 function activate(context) {
+  
   cmd = new PGChatComand();
   
   //register a variable so the user can change the connection
   vscode.chat.registerChatVariableResolver('conn', "The current db connection", {
     //this will pop a dialog
-    resolve: cmd.getConn()
+    resolve: cmd.getConn
   });
 
   const handler = async function (request, ctx, stream, token) {
     //holding on to the prompt so we can use it with the followup command
     currentPrompt = request.prompt;
     chatStream = stream;
-   
+    
     if(!request.prompt || request.prompt === ""){
       stream.markdown("Happy to help - what type of query do you want to run?")
     }else{
+      await cmd.getConn();
       stream.markdown("Using connection `" + cmd.conn + "`. You can change this by adding #conn to the end of your prompt.\n");
       try {
         const hasChanges = await cmd.chatWithCopilot(request.prompt,token);
@@ -46,6 +48,7 @@ function activate(context) {
             });
           }
         } catch(err){
+          console.error(err)
           stream.markdown("\n\n🤔 Looks like that database doesn't exist or has no tables. Please check the connection again. You can set it by using #conn");
         }
      }
