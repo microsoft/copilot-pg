@@ -24,8 +24,6 @@ const showResults = async function(results){
   }else{
     vscode.window.showInformationMessage(`✨ Query executed successfully.`, "OK");
   }
-  
-  //chatStream.markdown("\n\n The results are to the right... hope this helps");
 }
 
 function activate(context) {
