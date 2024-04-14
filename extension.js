@@ -1,8 +1,8 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 const vscode = require("vscode");
-//const LANGUAGE_MODEL_ID = "copilot-gpt-4"; // a lot slower than below
-const LANGUAGE_MODEL_ID = "copilot-gpt-3.5-turbo";
+const LANGUAGE_MODEL_ID = "copilot-gpt-4"; // a lot slower than below
+//const LANGUAGE_MODEL_ID = "copilot-gpt-3.5-turbo";
 const fs = require("fs");
 const path = require("path");
 const thisDir = vscode.workspace.workspaceFolders[0].uri.path;
@@ -71,7 +71,8 @@ function activate(context) {
     chatStream = stream;
     await getConn();
     stream.markdown("Using connection `" + conn + "`. You can change this by adding #conn to the end of your prompt.\n");
-    db = new DB(conn);
+    //avoiding duplicate connections
+    if(!db) db = new DB(conn);
     let schema;
     let haveError = false;
     try{
