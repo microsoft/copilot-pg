@@ -18,7 +18,13 @@ class Postgres{
     return this.db.manyOrNone(sql);
   }
   close(){
-    this.db.$pool.end();
+    try{
+      this.db.$pool.end();
+    }catch(err){
+      //this will happen if the connection is already closed
+      //no need to catch
+    }
+    
   }
 }
 
