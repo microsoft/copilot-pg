@@ -31,6 +31,10 @@
     ],
     "commands": [
       {
+          "command": "pg.run",
+          "title": "Execute the current query"
+      },
+      {
           "command": "pg.csv",
           "title": "Print current results to CSV"
       }

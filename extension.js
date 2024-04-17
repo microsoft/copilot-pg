@@ -48,28 +48,21 @@ function activate(context) {
     dba,
     vscode.commands.registerTextEditorCommand("pg.csv", async () => {
       //the json is cached already, just convert it and save
-      const fileName = await cmd.resultsToCsv(); 
-      if(fileName){
-        vscode.window.showInformationMessage(`✨ The results above have been written to csvs/${fileName} in your local project.`, "OK")
-      }else{
-        vscode.window.showInformationMessage("There are no results to show");
-      }
+      // const fileName = await cmd.resultsToCsv(); 
+      // if(fileName){
+        //vscode.window.showInformationMessage(`✨ The results above have been written to csvs/${fileName} in your local project.`, "OK")
+      // }else{
+      //   vscode.window.showInformationMessage("There are no results to show");
+      // }
 
     }),
     vscode.commands.registerTextEditorCommand("pg.run", async () => {
-      currentStream.progress("Executing...")
+      //the json is cached already, just convert it and save
       try{
-        
-        await pg.run();
-        if(pg.results.length > 0){
-          currentStream.markdown("✨ The results are on the right!");
-          currentStream.button({
-            command: "pg.csv",
-            title: vscode.l10n.t('🍔 Output results as CSV')
-          });
-        }
+        //await cmd.runResponse();
+        vscode.window.showInformationMessage("🤙🏼 Changes made");
       }catch(err){
-          currentStream.markdown("🤬 There was an error:" + err.message)
+        vscode.window.showInformationMessage("🤬 There was an error:", err.message)
       }
     })
   );
