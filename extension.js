@@ -8,32 +8,36 @@ const PGChatCommand = require("./lib/pg_chat_command");
 //a helpful thing for working with VS Code and Copilot
 const CopilotChat = require("./lib/copilot_chat");
 let conn;
+let currentStream;
 let cmd;
 const getConn = async function(){
   conn = util.getLocalEnvValue("DATABASE_URL");
   if(!conn){
     //ask for it
+    if(currentStream) currentStream.progress("No connection string found, see the input in editor.")
     conn = await vscode.window.showInputBox({
       prompt: "Which PostgreSQL database?", 
-      value: "postgres://localhost/red4"
+      value: "postgres://localhost/chinook"
     });
+    if(cmd) cmd.setConn(conn);
+  }else{
+    if(currentStream) currentStream.markdown("Using `DATABASE_URL` from .env")
   }
   return conn;
 }
 
 function activate(context) {
 
-  
-  
   vscode.chat.registerChatVariableResolver("conn", "The current db connection", {
     //this will pop a dialog
-    resolve: async function(){
-      conn = await getConn();
-      if(cmd) cmd.setConn(conn);
-    }
+    resolve: getConn
   });
   
   const handler = async function (request, ctx, stream, token) {
+    //setting this here so we can use in callbacks. Will refactor this
+    //at some point.
+    currentStream = stream;
+
     let chat = new CopilotChat();
     //If there's no prompt, just say hello
     if(!request.prompt || request.prompt === ""){
@@ -47,7 +51,10 @@ function activate(context) {
       if(cmd){
         //make sure the user knows which DB we're working against
         stream.markdown("Using connection `" + cmd.conn + "`. You can change this by adding #conn to the end of your prompt.\n");
-        const hasChanges = await cmd.chatWithCopilot(request.prompt,token);
+        stream.progress("One second...")
+        const hasChanges = await cmd.chatWithCopilot(request.prompt,token, function(fragment){
+          stream.markdown(fragment)
+        });
         if(hasChanges) {
           //DO NOT automatically run update, create, delete, alter, etc
           stream.markdown("These SQL commands contain schema or data changes. Proceed?")
@@ -91,8 +98,9 @@ function activate(context) {
       //the json is cached already, just convert it and save
       try{
         await cmd.runResponse();
+        vscode.window.showInformationMessage("🤙🏼 Changes made");
       }catch(err){
-        vscode.showInformationMessage("🤬 There was an error:", err.message)
+        vscode.window.showInformationMessage("🤬 There was an error:", err.message)
       }
     })
   );

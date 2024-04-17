@@ -1,4 +1,4 @@
-# The Chat DBA
+# The Chat DBA for PostgreSQL
 
 This is an experimental chat participant that uses Copilot to query your PostgreSQL database.
 
