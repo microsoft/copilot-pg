@@ -1,84 +1,46 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 const vscode = require("vscode");
-const util = require("./lib/utils");
 //wraps the logic for this extension
-const PGChatCommand = require("./lib/pg_chat_command");
+const {PostgresParticipant} = require("./lib/chat");
 
 //a helpful thing for working with VS Code and Copilot
-const CopilotChat = require("./lib/copilot_chat");
-let conn;
+
 let currentStream;
-let cmd;
-const getConn = async function(){
-  conn = util.getLocalEnvValue("DATABASE_URL");
-  if(!conn){
-    //ask for it
-    if(currentStream) currentStream.progress("No connection string found, see the input in editor.")
-    conn = await vscode.window.showInputBox({
-      prompt: "Which PostgreSQL database?", 
-      value: "postgres://localhost/chinook"
-    });
-    if(cmd) cmd.setConn(conn);
-  }else{
-    if(currentStream) currentStream.markdown("Using `DATABASE_URL` from .env")
-  }
-  return conn;
-}
+
 
 function activate(context) {
-
-  vscode.chat.registerChatVariableResolver("conn", "The current db connection", {
-    //this will pop a dialog
-    resolve: getConn
-  });
+  const pg = new PostgresParticipant();
   
   const handler = async function (request, ctx, stream, token) {
     //setting this here so we can use in callbacks. Will refactor this
     //at some point.
     currentStream = stream;
 
-    let chat = new CopilotChat();
     //If there's no prompt, just say hello
     if(!request.prompt || request.prompt === ""){
-      stream.markdown("Happy to help - what type of query do you want to run?")
+      stream.markdown("👋🏻 Happy to help - what type of query do you want to run?\n")
     }else{
-      //initialize if there's no command already
-      //this will create a prompt asking for the connection string
-      if(!conn) await getConn();
-      if(!cmd) cmd = new PGChatCommand(chat, conn);
-
-      if(cmd){
-        //make sure the user knows which DB we're working against
-        stream.markdown("Using connection `" + cmd.conn + "`. You can change this by adding #conn to the end of your prompt.\n");
-        stream.progress("One second...")
-        const hasChanges = await cmd.chatWithCopilot(request.prompt,token, function(fragment){
+      //stream.progress("Connecting...")
+      stream.progress("Conecting to Postgres. Looking in .env for `DATABASE_URL`, if none found, will ask you for one.")
+      const connected = await pg.connect();
+      if(connected){
+        stream.markdown("\n\n🐯 Connected to `" + pg.conn + "`");
+        stream.progress("👨🏻‍🎤 Talking to Copilot...");
+        await pg.chat(request.prompt, token, function(fragment){
           stream.markdown(fragment)
         });
-        if(hasChanges) {
-          //DO NOT automatically run update, create, delete, alter, etc
-          stream.markdown("These SQL commands contain schema or data changes. Proceed?")
-          stream.button({
-            command: "pg.run",
-            title: vscode.l10n.t('Yes, Execute!')
-          });
-          
-        }else{
-          //it's a select command
-          await cmd.runResponse();
-          vscode.window.showInformationMessage(`✨ Query executed successfully.`, "OK");
-          
-          //the followup to write a CSV
-          stream.button({
-            command: "pg.csv",
-            title: vscode.l10n.t('Print the results as CSV')
-          });
-        }
+        stream.markdown("\n\n💃 I can run these for you. Just click the button below");
+        stream.button({
+          command: "pg.run",
+          title: vscode.l10n.t('👍🏼 Yes, Run This')
+        });
       }else{
-        stream.markdown("👎🏼 Can't run a command unless I have a connection string.")
+        stream.markdown("🧐 Can't do much without a connection.")
       }
-     }
+    }
   }
+  
 
   const dba = vscode.chat.createChatParticipant("dba.pg", handler);
 
@@ -95,12 +57,19 @@ function activate(context) {
 
     }),
     vscode.commands.registerTextEditorCommand("pg.run", async () => {
-      //the json is cached already, just convert it and save
+      currentStream.progress("Executing...")
       try{
-        await cmd.runResponse();
-        vscode.window.showInformationMessage("🤙🏼 Changes made");
+        
+        await pg.run();
+        if(pg.results.length > 0){
+          currentStream.markdown("✨ The results are on the right!");
+          currentStream.button({
+            command: "pg.csv",
+            title: vscode.l10n.t('🍔 Output results as CSV')
+          });
+        }
       }catch(err){
-        vscode.window.showInformationMessage("🤬 There was an error:", err.message)
+          currentStream.markdown("🤬 There was an error:" + err.message)
       }
     })
   );
