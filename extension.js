@@ -21,61 +21,68 @@ function activate(context) {
       return tables;
     }
   });
+  vscode.chat.registerChatVariableResolver("results", "The results of the last query in JSON format", {
+    //this will pop a dialog
+    resolve: function(){
+      if(pg.results && pg.results.length > 0){
+        return JSON.stringify(pg.results, null, 2);
+      }else{
+        return "[]";
+      }
+    }
+  });
 
   const handler = async function (request, ctx, stream, token) {
 
     //set the output format
-    if(request.command === "out"){
-      pg.outputFormat = await vscode.window.showQuickPick(["json","csv"]);
-    
-    //this will show a list of tables if there's a current connection
-    }else if(request.command === "tables"){
-      if(pg.conn){
-        tables = await pg.getTableList();
-        stream.markdown("\n```json");
-        for(let table of tables){
-          stream.markdown(`${table.table_name}\n`)
+    switch(request.command){
+      case "out":
+        pg.outputFormat = await vscode.window.showQuickPick(["json","csv", "text"]);
+        await pg.report();
+        break;
+      case "tables":
+        if(pg.conn){
+          tables = await pg.getTableList();
+          stream.markdown("\n```json");
+          for(let table of tables){
+            stream.markdown(`${table.table_name}\n`)
+          }
+          stream.markdown("```");
+        }else{
+          stream.markdown("🤔 Set the database connection first using /conn");
         }
-        stream.markdown("```");
-      }else{
-        stream.markdown("🤔 Set the database connection first using /conn");
-      }
-    
-    //reset the connection
-    }else if(request.command === "conn"){
-      stream.progress("Setting the connection. Pop it in the box at the top of the editor...")
-      pg.conn = await vscode.window.showInputBox({
-        prompt: "Which database?",
-        value: "postgres://localhost/chinook"
-      });
-      pg.setDb();
-      stream.markdown("🤙🏼 Connection set to `"  + pg.conn + "`");
-    
-    //empty prompt?
-    }else if(!request.prompt || request.prompt === ""){
-      stream.markdown("👋🏻 Happy to help - what type of query do you want to run?\n")
-    }else{
-      
-      stream.progress("Conecting to Postgres. Looking in .env for `DATABASE_URL`, if none found, will ask you for one.")
-      const connected = await pg.connect();
-      if(connected){
-        stream.markdown("\n\n🐯 Connected to `" + pg.conn + "`");
-        stream.progress("👨🏻‍🎤 Talking to Copilot...");
-        await pg.chat(request.prompt, token, function(fragment){
-          stream.markdown(fragment)
+        break;
+      case "conn": 
+        stream.progress("Setting the connection. Pop it in the box at the top of the editor...")
+        pg.conn = await vscode.window.showInputBox({
+          prompt: "Which database?",
+          value: "postgres://localhost/chinook"
         });
-        if(pg.sqlCommands && pg.sqlCommands.length > 0){
-          stream.markdown("\n\n💃 I can run these for you. Just click the button below");
-          stream.button({
-            command: "pg.run",
-            title: vscode.l10n.t('Yes, Run This')
+        pg.setDb();
+        stream.markdown("🤙🏼 Connection set to `"  + pg.conn + "`");
+        break;
+      default:
+        stream.progress("Connecting to Postgres. Looking in .env for `DATABASE_URL`, if none found, will ask you for one.")
+        const connected = await pg.connect();
+        if(connected){
+          stream.markdown("\n\n🐯 Connected to `" + pg.conn + "`");
+          stream.progress("👨🏻‍🎤 Talking to Copilot...");
+          await pg.chat(request.prompt, token, function(fragment){
+            stream.markdown(fragment)
           });
-        }
+          if(pg.sqlCommands && pg.sqlCommands.length > 0){
+            stream.markdown("\n\n💃 I can run these for you. Just click the button below");
+            stream.button({
+              command: "pg.run",
+              title: vscode.l10n.t('Yes, Run This')
+            });
+          }
 
-      }else{
-        stream.markdown("🧐 Can't do much without a connection.")
-      }
+        }else{
+          stream.markdown("🧐 Can't do much without a connection.")
+        }
     }
+    
   }
   
 
@@ -88,6 +95,8 @@ function activate(context) {
       try{
         await pg.run();
         if(pg.results.length > 0){
+          //outputs the results if there are any
+          await pg.report();
           vscode.window.showInformationMessage("🤙🏼 Query executed", "OK")
         }else{
           vscode.window.showInformationMessage("🤙🏼 Changes made", "OK")
