@@ -26,17 +26,31 @@
         "id": "dba.pg",
         "name": "pg",
         "description": "Let's have some fun with Postgres",
-        "isSticky": true
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "conn",
+            "description": "Change the connection"
+          },
+          {
+            "name": "out",
+            "description": "Set the output format"
+          },
+          {
+            "name": "tables",
+            "description": "See a list of your database tables"
+          }
+        ]
       }
     ],
     "commands": [
       {
-          "command": "pg.run",
-          "title": "Execute the current query"
+        "command": "pg.run",
+        "title": "Execute the current query"
       },
       {
-          "command": "pg.csv",
-          "title": "Print current results to CSV"
+        "command": "out",
+        "title": "Set the output format"
       }
   ]
   },

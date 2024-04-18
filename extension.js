@@ -3,25 +3,59 @@
 const vscode = require("vscode");
 //wraps the logic for this extension
 const {PostgresParticipant} = require("./lib/chat");
-
+let tables = [];
 //a helpful thing for working with VS Code and Copilot
 
-let currentStream;
-
-
 function activate(context) {
-  const pg = new PostgresParticipant();
-  
-  const handler = async function (request, ctx, stream, token) {
-    //setting this here so we can use in callbacks. Will refactor this
-    //at some point.
-    currentStream = stream;
 
-    //If there's no prompt, just say hello
-    if(!request.prompt || request.prompt === ""){
+  const pg = new PostgresParticipant();
+  vscode.chat.registerChatVariableResolver("connection", "The current connection string", {
+    //this will pop a dialog
+    resolve: function(){
+      return pg.conn;
+    }
+  });
+  vscode.chat.registerChatVariableResolver("tables", "A list of tables", {
+    //this will pop a dialog
+    resolve: function(){
+      return tables;
+    }
+  });
+
+  const handler = async function (request, ctx, stream, token) {
+
+    //set the output format
+    if(request.command === "out"){
+      pg.outputFormat = await vscode.window.showQuickPick(["json","csv"]);
+    
+    //this will show a list of tables if there's a current connection
+    }else if(request.command === "tables"){
+      if(pg.conn){
+        tables = await pg.getTableList();
+        stream.markdown("\n```json");
+        for(let table of tables){
+          stream.markdown(`${table.table_name}\n`)
+        }
+        stream.markdown("```");
+      }else{
+        stream.markdown("🤔 Set the database connection first using /conn");
+      }
+    
+    //reset the connection
+    }else if(request.command === "conn"){
+      stream.progress("Setting the connection. Pop it in the box at the top of the editor...")
+      pg.conn = await vscode.window.showInputBox({
+        prompt: "Which database?",
+        value: "postgres://localhost/chinook"
+      });
+      pg.setDb();
+      stream.markdown("🤙🏼 Connection set to `"  + pg.conn + "`");
+    
+    //empty prompt?
+    }else if(!request.prompt || request.prompt === ""){
       stream.markdown("👋🏻 Happy to help - what type of query do you want to run?\n")
     }else{
-      //stream.progress("Connecting...")
+      
       stream.progress("Conecting to Postgres. Looking in .env for `DATABASE_URL`, if none found, will ask you for one.")
       const connected = await pg.connect();
       if(connected){
@@ -30,11 +64,14 @@ function activate(context) {
         await pg.chat(request.prompt, token, function(fragment){
           stream.markdown(fragment)
         });
-        stream.markdown("\n\n💃 I can run these for you. Just click the button below");
-        stream.button({
-          command: "pg.run",
-          title: vscode.l10n.t('👍🏼 Yes, Run This')
-        });
+        if(pg.sqlCommands && pg.sqlCommands.length > 0){
+          stream.markdown("\n\n💃 I can run these for you. Just click the button below");
+          stream.button({
+            command: "pg.run",
+            title: vscode.l10n.t('Yes, Run This')
+          });
+        }
+
       }else{
         stream.markdown("🧐 Can't do much without a connection.")
       }
@@ -46,23 +83,17 @@ function activate(context) {
 
   context.subscriptions.push(
     dba,
-    vscode.commands.registerTextEditorCommand("pg.csv", async () => {
-      //the json is cached already, just convert it and save
-      // const fileName = await cmd.resultsToCsv(); 
-      // if(fileName){
-        //vscode.window.showInformationMessage(`✨ The results above have been written to csvs/${fileName} in your local project.`, "OK")
-      // }else{
-      //   vscode.window.showInformationMessage("There are no results to show");
-      // }
-
-    }),
-    vscode.commands.registerTextEditorCommand("pg.run", async () => {
+    vscode.commands.registerCommand("pg.run", async () => {
       //the json is cached already, just convert it and save
       try{
-        //await cmd.runResponse();
-        vscode.window.showInformationMessage("🤙🏼 Changes made");
+        await pg.run();
+        if(pg.results.length > 0){
+          vscode.window.showInformationMessage("🤙🏼 Query executed", "OK")
+        }else{
+          vscode.window.showInformationMessage("🤙🏼 Changes made", "OK")
+        }
       }catch(err){
-        vscode.window.showInformationMessage("🤬 There was an error:", err.message)
+        vscode.window.showInformationMessage("🤬 There was an error: " + err.message, "OK")
       }
     })
   );
