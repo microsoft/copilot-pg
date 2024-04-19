@@ -33,12 +33,20 @@
             "description": "Change the connection"
           },
           {
+            "name": "help",
+            "description": "How to use this extension"
+          },
+          {
             "name": "out",
             "description": "Set the output format"
           },
           {
             "name": "tables",
             "description": "See a list of your database tables"
+          },
+          {
+            "name": "show",
+            "description": "Shows the details for a table"
           }
         ]
       }

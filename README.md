@@ -17,7 +17,7 @@ The entire `public` schema of your database will be loaded up to Copilot for eac
 The query can be plain English, like so (using the Chinook database):
 
 ```
-@pg /query Show all movies in the 'Sci-Fi' category
+@pg Show all movies in the 'Sci-Fi' category
 ```
 
 The names of the tables and any literal values should be cased properly and accurately named, otherwise Copilot will hallucinate the returns to best fit what you need.
@@ -38,7 +38,7 @@ This is an actual Copilot response, and it was able to be this accurate because 
 Let's do another one, looking for albums by AC/DC:
 
 ```
-@pg /query show all albums by 'AC/DC'
+@pg show all albums by 'AC/DC'
 ```
 
 Copilot's response:
@@ -49,6 +49,18 @@ FROM album
 JOIN artist ON album.artist_id = artist.artist_id
 WHERE artist.name = 'AC/DC';
 ```
+
+## Extension Commands
+
+There are a few commands you can use with this extension, including:
+
+ - `/conn`, This will prompt you for the new connection string.
+ - `/out`, which is the output format for the queries. You can set this to csv, json, or text (ascii table)
+ - `/tables`, which shows a list of your tables in the chat window.
+
+## Variables
+
+You can send your results to other chat participants using `#results`, same with the `#connection` and list of `#tables`.
 
 ## But... does it work?
 
@@ -65,7 +77,7 @@ The extension will pull the SQL from the response, and run it for you against yo
 +---------------------------------------+
 ```
 
-At that point, you'll be able to save the results as a CSV file, which will save it into a `/csvs` directory in your project.
+You can change the output if you like, and File - Save As however you want. This is great for JSON and CSV.
 
 ## TODO
 
