@@ -33,6 +33,14 @@
             "description": "Change the connection"
           },
           {
+            "name": "sql",
+            "description": "Runs a SQL command and shows the results, if any"
+          },
+          {
+            "name": "history",
+            "description": "See your prompt history"
+          },
+          {
             "name": "help",
             "description": "How to use this extension"
           },
@@ -40,13 +48,10 @@
             "name": "out",
             "description": "Set the output format"
           },
-          {
-            "name": "tables",
-            "description": "See a list of your database tables"
-          },
+
           {
             "name": "show",
-            "description": "Shows the details for a table"
+            "description": "Shows all tables. Or, pass in a table name to see the columns"
           }
         ]
       }

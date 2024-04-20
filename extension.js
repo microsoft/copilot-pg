@@ -7,21 +7,26 @@ const {PostgresParticipant} = require("./lib/chat");
 let tables = [];
 //a helpful thing for working with VS Code and Copilot
 
-function activate(context) {
-
+async function activate(context) {
   const pg = new PostgresParticipant();
-  vscode.chat.registerChatVariableResolver("connection", "The current connection string", {
-    //this will pop a dialog
-    resolve: function(){
-      return pg.conn;
+  await util.clearTemp();
+  //this is called by pg.run as well as /sql
+  //which is why it needs to be activator scoped
+  const execQuery = async function(){
+    try{
+      await pg.run();
+      if(pg.results && pg.results.length > 0){
+        //outputs the results if there are any
+        await pg.report();
+        vscode.window.showInformationMessage("🤙🏼 Query executed", "OK")
+      }else{
+        vscode.window.showInformationMessage("🤙🏼 Changes made", "OK")
+      }
+    }catch(err){
+      vscode.window.showInformationMessage("🤬 There was an error: " + err.message, "OK")
     }
-  });
-  vscode.chat.registerChatVariableResolver("tables", "A list of tables", {
-    //this will pop a dialog
-    resolve: function(){
-      return tables;
-    }
-  });
+  }
+  //offer the results as a variable 
   vscode.chat.registerChatVariableResolver("results", "The results of the last query in JSON format", {
     //this will pop a dialog
     resolve: function(){
@@ -34,9 +39,29 @@ function activate(context) {
   });
 
   const handler = async function (request, ctx, stream, token) {
+    //the main chat function, which calls copilot.
+    //this is used in two places: the default switch handler
+    //and also in the /history command to rerun prompts
+    const execChat = async function(prompt){
+      stream.progress("👨🏻‍🎤 Talking to Copilot...");
+
+      await pg.chat(prompt, token, function(fragment){
+        stream.markdown(fragment)
+      });
+      if(pg.sqlCommands && pg.sqlCommands.length > 0){
+        stream.markdown("\n\n💃 I can run these for you. Just click the button below");
+        stream.button({
+          command: "pg.run",
+          title: vscode.l10n.t('Yes, Run This')
+        });
+      }
+    }
+
     const prompt = request.prompt.trim();
+    
     //set the output format
     switch(request.command){
+      //change the output format
       case "out":
         const picks = ["json","csv", "text"];
         if(picks.indexOf(prompt) >=0 ){
@@ -47,35 +72,47 @@ function activate(context) {
         stream.markdown("🤙🏼 Output format set to `"  + pg.outputFormat + "`");
         await pg.report();
         break;
+      case "history":
+        //see your chat history and rerun things
+        if(pg.history.length > 0){
+          const prompt = await vscode.window.showQuickPick(pg.history);
+          await execChat(prompt);
+        }else{
+          stream.markdown("There's no chat history yet");
+        }
+        break;
       case "help":
         stream.markdown(util.readFile("HELP.md"));
         break;
-      case "tables":
-        if(pg.conn){
-          let out = ["```json"];
-          tables = await pg.getTableList();
-          tables.forEach(t => out.push(t.table_name))
-          out.push("```");
-          stream.markdown(out.join("\n"));
-        }else{
-          stream.markdown("🤔 Set the database connection first using /conn");
-        }
+      //run a SQL statement. Will work for anything aside from DROPs
+      //which is true for any commands. 
+      case "sql":
+        //reset
+        pg.sqlCommands.length = 0;
+        //is this scary? Not sure.
+        pg.sqlCommands.push(request.prompt);
+        await execQuery();
         break;
       case "show":
-        if(pg.conn && prompt.length > 0){
-          const table = await pg.showTable(prompt);
-          
-          if(table){
-            let out = [];
-            out.push("Here are the details for "+ prompt);
-            out.push("```json");
-            out.push(table);
+        if(pg.conn){
+          let out = ["```json"];
+          if(prompt === "tables" || prompt.trim() === ""){
+            stream.markdown("Here are the tables in the database. You can ask for details about any table using `show [table]`.\n")
+            let tables = await pg.getTableList();
+            tables.forEach(t => out.push(t.table_name));
             out.push("```");
-            stream.markdown(out.join("\n"));
+            stream.markdown(out.join("\n"))
           }else{
-            stream.markdown("🧐 Can't find the table `"+ prompt + "`")
+            const table = await pg.showTable(prompt);
+            if(table){
+              stream.markdown("Here are details for `" + prompt + "`\n");
+              out.push(table);
+              out.push("```");
+              stream.markdown(out.join("\n"))
+            }else{
+              stream.markdown("🧐 Can't find the table `"+ prompt + "` \n")
+            }
           }
-
         }else{
           stream.markdown("🤔 Make sure the connection is set with /conn and you pass a table name");
         }
@@ -96,22 +133,9 @@ function activate(context) {
         stream.markdown("🤙🏼 Connection set to `"  + pg.conn + "`");
         break;
       default:
-        stream.progress("Connecting to Postgres. Looking in .env for `DATABASE_URL`, if none found, will ask you for one.")
-        //const connected = await pg.connect();
+        //the default is to just run the chat, using whatever was entered
         if(pg.conn && prompt.length > 0){
-          stream.markdown("🐯 Connected to `" + pg.conn + "`");
-          stream.progress("👨🏻‍🎤 Talking to Copilot...");
-          await pg.chat(request.prompt, token, function(fragment){
-            stream.markdown(fragment)
-          });
-          if(pg.sqlCommands && pg.sqlCommands.length > 0){
-            stream.markdown("\n\n💃 I can run these for you. Just click the button below");
-            stream.button({
-              command: "pg.run",
-              title: vscode.l10n.t('Yes, Run This')
-            });
-          }
-
+          await execChat(request.prompt);
         }else{
           if(!pg.conn){
             //we need a connection
@@ -130,26 +154,15 @@ function activate(context) {
 
   context.subscriptions.push(
     dba,
-    vscode.commands.registerCommand("pg.run", async () => {
-      //the json is cached already, just convert it and save
-      try{
-        await pg.run();
-        if(pg.results && pg.results.length > 0){
-          //outputs the results if there are any
-          await pg.report();
-          vscode.window.showInformationMessage("🤙🏼 Query executed", "OK")
-        }else{
-          vscode.window.showInformationMessage("🤙🏼 Changes made", "OK")
-        }
-      }catch(err){
-        vscode.window.showInformationMessage("🤬 There was an error: " + err.message, "OK")
-      }
-    })
+    vscode.commands.registerCommand("pg.run", execQuery)
   );
 }
 
 // This method is called when your extension is deactivated
-function deactivate() {}
+async function deactivate() {
+  //delete temp files
+  await util.clearTemp();
+}
 
 module.exports = {
   activate,

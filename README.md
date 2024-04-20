@@ -54,17 +54,21 @@ WHERE artist.name = 'AC/DC';
 
 There are a few commands you can use with this extension, including:
 
- - `/conn`, This will prompt you for the new connection string.
- - `/out`, which is the output format for the queries. You can set this to csv, json, or text (ascii table)
- - `/tables`, which shows a list of your tables in the chat window.
+ - `/conn` will prompt you for the new connection string.
+ - `/out` will set the format of your results to `csv`, `json`, or `text` (ascii table)
+ - `/show` shows a list of your tables in the chat window.
+ - `/show [table]` will show the details of the table.
+ - `/history` will open a dropdown of your previous prompts. If you select one, it will be run again.
+ - `/sql` will let you run raw SQL in the prompt. This is meant for correction or quick action. Does _not_ run drop statements.
+
 
 ## Variables
 
-You can send your results to other chat participants using `#results`, same with the `#connection` and list of `#tables`.
+You can send your results to other chat participants using `#results`.
 
 ## But... does it work?
 
-The extension will pull the SQL from the response, and run it for you against your database, outputting the results into a temp page in your editor window:
+The extension will pull the SQL from the response, and run it for you against your database, outputting the results into a temp page in your editor window. The default is JSON, but you can also do CSV and ASCII table, as seen below:
 
 ```
 +---------------------------------------+
@@ -78,9 +82,3 @@ The extension will pull the SQL from the response, and run it for you against yo
 ```
 
 You can change the output if you like, and File - Save As however you want. This is great for JSON and CSV.
-
-## TODO
-
- - Alter statement check
- - Variables for connection
- - Build May 8
