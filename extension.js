@@ -7,8 +7,9 @@ const {PostgresParticipant} = require("./lib/chat");
 let tables = [];
 //a helpful thing for working with VS Code and Copilot
 
-function activate(context) {
+async function activate(context) {
   const pg = new PostgresParticipant();
+  await util.clearTemp();
   //this is called by pg.run as well as /sql
   //which is why it needs to be activator scoped
   const execQuery = async function(){
@@ -158,8 +159,9 @@ function activate(context) {
 }
 
 // This method is called when your extension is deactivated
-function deactivate() {
-  //get all the temp files and delete
+async function deactivate() {
+  //delete temp files
+  await util.clearTemp();
 }
 
 module.exports = {
