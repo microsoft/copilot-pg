@@ -96,7 +96,7 @@ function activate(context) {
         if(pg.conn){
           let out = ["```json"];
           if(prompt === "tables" || prompt.trim() === ""){
-            stream.markdown("Here are the tables in the database:\n")
+            stream.markdown("Here are the tables in the database. You can ask for details about any table using `show [table]`.\n")
             let tables = await pg.getTableList();
             tables.forEach(t => out.push(t.table_name));
             out.push("```");
@@ -104,7 +104,7 @@ function activate(context) {
           }else{
             const table = await pg.showTable(prompt);
             if(table){
-              stream.markdown("Here are details for `" + prompt + "` \n");
+              stream.markdown("Here are details for `" + prompt + "`\n");
               out.push(table);
               out.push("```");
               stream.markdown(out.join("\n"))
@@ -158,7 +158,9 @@ function activate(context) {
 }
 
 // This method is called when your extension is deactivated
-function deactivate() {}
+function deactivate() {
+  //get all the temp files and delete
+}
 
 module.exports = {
   activate,
