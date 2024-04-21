@@ -2,9 +2,10 @@
 // Import the module and reference it with the alias vscode in your code below
 const vscode = require("vscode");
 const util = require("./lib/utils");
+
 //wraps the logic for this extension
 const {PostgresParticipant} = require("./lib/chat");
-let tables = [];
+
 //a helpful thing for working with VS Code and Copilot
 
 async function activate(context) {
@@ -13,17 +14,40 @@ async function activate(context) {
   //this is called by pg.run as well as /sql
   //which is why it needs to be activator scoped
   const execQuery = async function(){
+
     try{
+      //is this a redo? It is if we have a query.sql file open
+      const sql = util.readFile("temp/query.sql");
+      if(sql && util.tempfileInEditor("query.sql")){
+        pg.sqlCommands.length = 0;
+        pg.sqlCommands.push(sql);
+      }
       await pg.run();
       if(pg.results && pg.results.length > 0){
         //outputs the results if there are any
         await pg.report();
         vscode.window.showInformationMessage("🤙🏼 Query executed", "OK")
       }else{
-        vscode.window.showInformationMessage("🤙🏼 Changes made", "OK")
+        vscode.window.showInformationMessage("🤙🏼 Query executed - no results (and no error)", "OK")
       }
+      //if we're here, we're good to go
+      //util.removeFile("temp/query.sql");
     }catch(err){
-      vscode.window.showInformationMessage("🤬 There was an error: " + err.message, "OK")
+      //if there's an error, let's write the SQL to a temp file
+      //see if they can change it
+      
+      const sql = pg.sqlCommands.join("\n\n");
+      const out = `/*
+Looks like there's a SQL problem: ${err.message}. 
+Copilot does its best but sometimes needs a little help!
+Try fixing the problem below and then save the file. Click the 'Run This' button to execute again.
+*/
+      
+${sql}
+`;
+
+      await util.writeToTemp("query.sql", out);
+      //vscode.window.showInformationMessage("🤬 There was an error: " + err.message, "OK")
     }
   }
   //offer the results as a variable 
@@ -52,7 +76,7 @@ async function activate(context) {
         stream.markdown("\n\n💃 I can run these for you. Just click the button below");
         stream.button({
           command: "pg.run",
-          title: vscode.l10n.t('Yes, Run This')
+          title: vscode.l10n.t('Run This')
         });
       }
     }
@@ -92,6 +116,20 @@ async function activate(context) {
         //is this scary? Not sure.
         pg.sqlCommands.push(request.prompt);
         await execQuery();
+        break;
+      case "run":
+        //reset
+        //get the current query.sql
+        const sql = util.readFile("temp/query.sql");
+        if(sql){
+          pg.sqlCommands.length = 0;
+          //is this scary? Not sure.
+          pg.sqlCommands.push(sql);
+          await execQuery();
+        }else{
+          stream.markdown("Sorry, there's no SQL file.")
+        }
+
         break;
       case "show":
         if(pg.conn){
