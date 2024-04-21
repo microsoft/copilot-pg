@@ -37,6 +37,10 @@
             "description": "Runs a SQL command and shows the results, if any"
           },
           {
+            "name": "run",
+            "description": "Reruns the current SQL command, if any"
+          },
+          {
             "name": "history",
             "description": "See your prompt history"
           },
