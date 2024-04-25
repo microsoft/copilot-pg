@@ -26,9 +26,9 @@ async function activate(context) {
       if(pg.results && pg.results.length > 0){
         //outputs the results if there are any
         await pg.report();
-        vscode.window.showInformationMessage("🤙🏼 Query executed", "OK")
+        //vscode.window.showInformationMessage("🤙🏼 Query executed", "OK")
       }else{
-        vscode.window.showInformationMessage("🤙🏼 Query executed - no results (and no error)", "OK")
+        vscode.window.showInformationMessage("🤙🏼 Query executed with no results", "OK")
       }
       //if we're here, we're good to go
       //util.removeFile("temp/query.sql");

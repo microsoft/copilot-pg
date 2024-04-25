@@ -26,7 +26,6 @@
         "id": "dba.pg",
         "name": "pg",
         "description": "Let's have some fun with Postgres",
-        "isSticky": true,
         "commands": [
           {
             "name": "conn",
@@ -39,10 +38,6 @@
           {
             "name": "run",
             "description": "Reruns the current SQL command, if any"
-          },
-          {
-            "name": "history",
-            "description": "See your prompt history"
           },
           {
             "name": "help",
