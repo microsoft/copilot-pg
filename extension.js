@@ -117,20 +117,6 @@ ${sql}
         pg.sqlCommands.push(request.prompt);
         await execQuery();
         break;
-      case "run":
-        //reset
-        //get the current query.sql
-        const sql = util.readFile("temp/query.sql");
-        if(sql){
-          pg.sqlCommands.length = 0;
-          //is this scary? Not sure.
-          pg.sqlCommands.push(sql);
-          await execQuery();
-        }else{
-          stream.markdown("Sorry, there's no SQL file.")
-        }
-
-        break;
       case "show":
         if(pg.conn){
           let out = ["```json"];

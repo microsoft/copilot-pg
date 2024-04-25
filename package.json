@@ -36,10 +36,6 @@
             "description": "Runs a SQL command and shows the results, if any"
           },
           {
-            "name": "run",
-            "description": "Reruns the current SQL command, if any"
-          },
-          {
             "name": "help",
             "description": "How to use this extension"
           },
