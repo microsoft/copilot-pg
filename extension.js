@@ -166,7 +166,17 @@ async function activate(context) {
   // }
 
   const pg = new PG();
-  const participant = vscode.chat.createChatParticipant("dba.pg", async (request, context, stream, token) => {
+  vscode.chat.registerChatVariableResolver("results", "The results of the last query in JSON format", {
+    resolver: () => {
+      if(pg.queryResults && pg.queryResults.length > 0){
+        return JSON.stringify(pg.queryResults, null, 2);
+      }else{
+        return "[]";
+      }
+    }
+  });
+  const participant = vscode.chat.createChatParticipant("dba.pg", async (request, context, 
+    stream, token) => {
 
     await pg.handle(request, context, stream, token)
 
