@@ -20,6 +20,15 @@ async function activate(context) {
 
   context.subscriptions.push(
     participant,
+    vscode.commands.registerCommand("pg.print", async () => {
+      const sql = pg.codeblocks.join("\n");
+      let out = `/*
+Edit the SQL below and click 'Run This' to execute the query. You can change the file as much as you like, and if there's an error, you'll see it here in the file
+*/
+
+`
+      Editor.writeAndShowFile("query.sql", out + sql);
+    }),
     //this is a little more code than I like to put in the extension.js file
     //however, these are all file interactions and I want to keep those
     //separate from the participant logic
@@ -32,7 +41,10 @@ async function activate(context) {
           pg.codeblocks.push(sql);
         }
       }
-      const {results, error} = await pg.run();
+      let {results, error} = await pg.run();
+      //no need for nested arrays here
+      if(results.length === 1) results = results[0];
+      
       if(error){
         Editor.writeAndShowFile("query.sql", error);
       }else{

@@ -52,6 +52,10 @@
         "title": "Execute the current query"
       },
       {
+        "command": "pg.print",
+        "title": "Show the current SQL commands in the editor."
+      },
+      {
         "command": "out",
         "title": "Set the output format"
       }
