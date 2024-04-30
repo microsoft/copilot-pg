@@ -6,8 +6,6 @@ If you have a `.env` file in your workspace and it has a `DATABASE_URL`, that co
  - `/out` will set the format of your results to `csv`, `json`, or `text` (ascii table)
  - `/show` shows a list of your tables in the chat window.
  - `/show [table]` will show the details of the table.
- - `/history` will open a dropdown of your previous prompts. If you select one, it will be run again.
- - `/sql` will let you run raw SQL in the prompt. This is meant for correction or quick action. Does _not_ run drop statements.
 
 To get started, make sure you have a connection set and off you go. 
 

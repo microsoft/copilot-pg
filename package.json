@@ -26,23 +26,10 @@
         "id": "dba.pg",
         "name": "pg",
         "description": "Let's have some fun with Postgres",
-        "isSticky": true,
         "commands": [
           {
             "name": "conn",
             "description": "Change the connection"
-          },
-          {
-            "name": "sql",
-            "description": "Runs a SQL command and shows the results, if any"
-          },
-          {
-            "name": "run",
-            "description": "Reruns the current SQL command, if any"
-          },
-          {
-            "name": "history",
-            "description": "See your prompt history"
           },
           {
             "name": "help",
@@ -52,7 +39,6 @@
             "name": "out",
             "description": "Set the output format"
           },
-
           {
             "name": "show",
             "description": "Shows all tables. Or, pass in a table name to see the columns"
@@ -69,7 +55,7 @@
         "command": "out",
         "title": "Set the output format"
       }
-  ]
+    ]
   },
   "scripts": {
     "lint": "eslint .",
@@ -83,6 +69,7 @@
     "@vscode/test-cli": "^0.0.6",
     "@vscode/test-electron": "^2.3.9",
     "eslint": "^8.56.0",
+    "mocha": "^10.4.0",
     "typescript": "^5.3.3"
   },
   "dependencies": {
