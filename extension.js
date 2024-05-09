@@ -5,10 +5,30 @@ const PG = require("./lib/pg");
 const Editor = require("./lib/editor");
 
 async function activate(context) {
-
   //this is our chat participant
   const pg = new PG();
+  
+  //wire up events coming from the participant
+  pg.on("report", async function(){
+    if(pg.outputFormat === "csv"){
+      let converter = require('json-2-csv');
+      const csv = await converter.json2csv(pg.queryResults);
+      Editor.writeAndShowFile("results.csv", csv);
+    }else{
+      const json = JSON.stringify(pg.queryResults, null, 2);
+      if(pg.queryResults.length === 0){
+        vscode.window.showInformationMessage("Query executed successfully with no results");
+      }else{
+        Editor.writeAndShowFile("results.json", json);
+      }
+    }
+  });
 
+  //handle the query error by showing the SQL in a file.
+  pg.on("query-error", async function(message){
+    Editor.writeAndShowFile("query.sql", message);
+  });
+  
   //it's important to use an inline callback here due to scoping issues.
   //setting the handler to pg.handle would not work as "this" would not
   //be set right.
@@ -20,6 +40,15 @@ async function activate(context) {
 
   context.subscriptions.push(
     participant,
+    vscode.commands.registerCommand("pg.print", async () => {
+      const sql = pg.codeblocks.join("\n");
+      let out = `/*
+Edit the SQL below and click 'Run This' to execute the query. You can change the file as much as you like, and if there's an error, you'll see it here in the file
+*/
+
+`
+      Editor.writeAndShowFile("query.sql", out + sql);
+    }),
     //this is a little more code than I like to put in the extension.js file
     //however, these are all file interactions and I want to keep those
     //separate from the participant logic
@@ -32,19 +61,7 @@ async function activate(context) {
           pg.codeblocks.push(sql);
         }
       }
-      const {results, error} = await pg.run();
-      if(error){
-        Editor.writeAndShowFile("query.sql", error);
-      }else{
-        if(this.outputFormat === "csv"){
-          let converter = require('json-2-csv');
-          const csv = await converter.json2csv(results);
-          Editor.writeAndShowFile("results.csv", csv);
-        }else{
-          const json = JSON.stringify(results, null, 2);
-          Editor.writeAndShowFile("results.json", json);
-        }
-      }
+      await pg.run();
 
     })
   );
@@ -52,8 +69,7 @@ async function activate(context) {
 
 // This method is called when your extension is deactivated
 async function deactivate() {
-  //delete temp files
-  await util.clearTemp();
+  
 }
 
 module.exports = {

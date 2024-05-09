@@ -10,14 +10,13 @@
     "Other"
   ],
   "extensionDependencies": [
-    "vscode.git"
+    "github.copilot-chat"
   ],
   "activationEvents": [],
   "enabledApiProposals": [
     "chatParticipant",
     "chatVariableResolver",
-    "languageModels",
-    "workspaceTrust"
+    "languageModels"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -27,6 +26,10 @@
         "name": "pg",
         "description": "Let's have some fun with Postgres",
         "commands": [
+          {
+            "name": "ddl",
+            "description": "Helps you build your database schema."
+          },
           {
             "name": "conn",
             "description": "Change the connection"
@@ -52,15 +55,17 @@
         "title": "Execute the current query"
       },
       {
+        "command": "pg.print",
+        "title": "Show the current SQL commands in the editor."
+      },
+      {
         "command": "out",
         "title": "Set the output format"
       }
     ]
   },
   "scripts": {
-    "lint": "eslint .",
-    "pretest": "npm run lint",
-    "test": "vscode-test"
+    "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",
@@ -74,11 +79,7 @@
   },
   "dependencies": {
     "@mrodrig/json-2-csv-cli": "^5.0.0",
-    "ascii-table3": "^0.9.0",
     "dotenv": "^16.4.5",
-    "octokit": "^3.1.2",
-    "pg-promise": "^11.5.5",
-    "promised-sqlite3": "^2.1.0",
-    "sqlite3": "^5.1.7"
+    "pg-promise": "^11.5.5"
   }
 }
