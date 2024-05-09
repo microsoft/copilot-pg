@@ -5,10 +5,31 @@ const PG = require("./lib/pg");
 const Editor = require("./lib/editor");
 
 async function activate(context) {
-
   //this is our chat participant
   const pg = new PG();
+  
+  //wire up events coming from the participant
+  pg.on("report", async function(){
+    if(pg.outputFormat === "csv"){
+      let converter = require('json-2-csv');
+      const csv = await converter.json2csv(pg.queryResults);
+      Editor.writeAndShowFile("results.csv", csv);
+    }else{
+      const json = JSON.stringify(pg.queryResults, null, 2);
+      if(pg.queryResults.length === 0){
+        vscode.window.showInformationMessage("Query executed successfully");
+      }else{
+        Editor.writeAndShowFile("results.json", json);
+      }
+      
+    }
+  });
 
+  //handle the query error by showing the SQL in a file.
+  pg.on("query-error", async function(message){
+    Editor.writeAndShowFile("query.sql", message);
+  });
+  
   //it's important to use an inline callback here due to scoping issues.
   //setting the handler to pg.handle would not work as "this" would not
   //be set right.
@@ -41,22 +62,7 @@ Edit the SQL below and click 'Run This' to execute the query. You can change the
           pg.codeblocks.push(sql);
         }
       }
-      let {results, error} = await pg.run();
-      //no need for nested arrays here
-      if(results.length === 1) results = results[0];
-      
-      if(error){
-        Editor.writeAndShowFile("query.sql", error);
-      }else{
-        if(this.outputFormat === "csv"){
-          let converter = require('json-2-csv');
-          const csv = await converter.json2csv(results);
-          Editor.writeAndShowFile("results.csv", csv);
-        }else{
-          const json = JSON.stringify(results, null, 2);
-          Editor.writeAndShowFile("results.json", json);
-        }
-      }
+      await pg.run();
 
     })
   );
@@ -64,8 +70,7 @@ Edit the SQL below and click 'Run This' to execute the query. You can change the
 
 // This method is called when your extension is deactivated
 async function deactivate() {
-  //delete temp files
-  await util.clearTemp();
+  
 }
 
 module.exports = {
