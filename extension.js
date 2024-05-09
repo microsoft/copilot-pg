@@ -17,11 +17,10 @@ async function activate(context) {
     }else{
       const json = JSON.stringify(pg.queryResults, null, 2);
       if(pg.queryResults.length === 0){
-        vscode.window.showInformationMessage("Query executed successfully");
+        vscode.window.showInformationMessage("Query executed successfully with no results");
       }else{
         Editor.writeAndShowFile("results.json", json);
       }
-      
     }
   });
 
