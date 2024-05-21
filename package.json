@@ -27,8 +27,8 @@
         "description": "Let's have some fun with Postgres",
         "commands": [
           {
-            "name": "ddl",
-            "description": "Helps you build your database schema."
+            "name": "schema",
+            "description": "Helps you build out your database schema."
           },
           {
             "name": "conn",

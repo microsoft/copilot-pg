@@ -58,26 +58,13 @@ There are a few commands you can use with this extension, including:
  - `/out` will set the format of your results to `csv`, `json`, or `text` (ascii table)
  - `/show` shows a list of your tables in the chat window.
  - `/show [table]` will show the details of the table.
- - `/ddl` will tell Copilot that you're specifically wanting to work with Data Definition Language (`create table`, etc) to build our your database.
+ - `/schema` helps you build your database, either starting from scratch or extending your current schema.
 
 
 ## Variables
 
 You can send your results to other chat participants using `#results`.
 
-## But... does it work?
+## Help and Issues
 
-The extension will pull the SQL from the response, and run it for you against your database, outputting the results into a temp page in your editor window. The default is JSON, but you can also do CSV and ASCII table, as seen below:
-
-```
-+---------------------------------------+
-|      show all albums by 'AC/DC'       |
-+---------------------------------------+
-|                 title                 |
-+---------------------------------------+
-| For Those About To Rock We Salute You |
-| Let There Be Rock                     |
-+---------------------------------------+
-```
-
-You can change the output if you like, and File - Save As however you want. This is great for JSON and CSV.
+Have an issue or need to report a bug? Help is always appreciated!
