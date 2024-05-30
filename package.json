@@ -1,9 +1,11 @@
 {
+
   "name": "pg-chat",
   "displayName": "PG Chat Participant",
   "description": "Creates queries and other fun things with your Postgres database. Use chat to create tables, views, and run queries, right in your editor. Output the results as JSON or CSV.",
   "version": "1.0.0",
   "publisher":"robconery",
+
   "engines": {
     "vscode": "^1.86.0"
   },
