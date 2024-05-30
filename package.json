@@ -2,7 +2,8 @@
   "name": "pgfriendo",
   "displayName": "PG Friendo",
   "description": "Creates queries and other fun things with your default database.",
-  "version": "0.0.1",
+  "icon": "images/icon.png",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.86.0"
   },
