@@ -3,11 +3,11 @@
   "name": "pg-chat",
   "displayName": "PG Chat Participant",
   "description": "Creates queries and other fun things with your Postgres database. Use chat to create tables, views, and run queries, right in your editor. Output the results as JSON or CSV.",
-  "version": "1.0.1",
+  "version": "1.0.5",
   "publisher":"robconery",
-
+  "icon": "images/icon.png",
   "engines": {
-    "vscode": "^1.86.0"
+    "vscode": "^1.90.0"
   },
   "repository": {
     "type": "git",
@@ -50,6 +50,10 @@
           {
             "name": "show",
             "description": "Shows all tables. Or, pass in a table name to see the columns"
+          },
+          {
+            "name": "fix",
+            "description": "Fixes the last error encountered"
           }
         ]
       }
